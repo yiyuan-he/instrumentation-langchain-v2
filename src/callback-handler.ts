@@ -99,7 +99,6 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
   constructor(tracer: Tracer) {
     super();
     this.tracer = tracer;
-    console.log('OpenTelemetryCallbackHandler initialized');
   }
 
   private _endSpan(span: Span, runId: string): void {
@@ -228,32 +227,12 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     if (context.active().getValue(_SUPPRESS_INSTRUMENTATION_KEY)) {
       return;
     }
-    
-    // Extract model ID from extra params if available
-    let modelId;
-    if (extraParams?.invocation_params && typeof extraParams.invocation_params === 'object' && 
-        'model_id' in extraParams.invocation_params) {
-      modelId = extraParams.invocation_params.model_id;
-    }
 
-    // Determine the name to use
-    let name = llm.name;
-    if (modelId) {
-      name = modelId as string;
+    let name;
+    if (llm.id) {
+        name = llm.id[llm.id.length - 1];
     }
-    if (name === undefined || runName === undefined) {
-      console.log("undefined value detected");
-       console.log(`ChatStart serialized: ${JSON.stringify(llm, null, 2)}`);
-      console.log(`ChatStart metadata: ${JSON.stringify(metadata, null, 2)}`);
-      console.log(`ChatStart extraParams: ${JSON.stringify(extraParams, null, 2)}`);
-      console.log(`ChatStart messages: ${JSON.stringify(messages, null, 2)}`);
-      console.log(`ChatStart tags: ${JSON.stringify(tags, null, 2)}`);
-    }
-    console.log(`🗣️ Starting chat model: ${name}, runName: ${runName}`);
-    // console.log(`ChatStart extraParams: ${JSON.stringify(extraParams, null, 2)}`);
-    // console.log(`ChatStart metadata: ${JSON.stringify(metadata, null, 2)}`);
-
-    // const spanName = `\${GenAIOperationValues.CHAT} \${name}`;
+  
     const spanName = GenAIOperationValues.CHAT + " " + name;
     const span = this._createSpan(runId, parentRunId,
                                   spanName, 
@@ -266,8 +245,6 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
       _setRequestParams(span, metadata, this.spanMapping.get(runId)!);
       _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, metadata.ls_model_name);
     }
-   
-    // return await context.with(context.active().setValue(llm.id, span), async () => {});
   }
 
   async handleLLMStart(
@@ -308,9 +285,6 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     _setRequestParams(span, extraParams || {}, this.spanMapping.get(runId)!);
     _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, llm.name);
     _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, 'text_completion');
-
-
-    console.log(`🗣️ Starting llmStart`);
   }
 
   async handleLLMEnd(
@@ -386,16 +360,11 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     if (context.active().getValue(_SUPPRESS_INSTRUMENTATION_KEY)) {
       return;
     }
-    // ///////// debugging
-    // console.log('chainStart runType:', runType);
-    console.log('chainStart runName:', runName);
 
-    // console.log(`ChatStart extraParams: ${JSON.stringify(extraParams, null, 2)}`);
-    // console.log(`ChatStart metadata: ${JSON.stringify(metadata, null, 2)}`);
+    if (runName === undefined && chain.id) {
+      runName = chain.id[chain.id.length - 1];
+    } 
 
-    const name = this._getNameFromCallback(chain, tags, metadata, {});
-
-    // const spanName = `chain \${name}`;
     const spanName = `chain ${runName}`;
     const span = this._createSpan(runId, parentRunId, spanName, SpanKind.INTERNAL, metadata);
 
@@ -405,17 +374,8 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
         if (metadata && metadata.agent_name) {
             _setSpanAttribute(span, Span_Attributes.GEN_AI_AGENT_NAME, metadata.agent_name);
         }
-        _setSpanAttribute(span, 'gen_ai.prompt', String(inputs));
+        // _setSpanAttribute(span, 'gen_ai.prompt', JSON.stringify(inputs, null, 2)); // commented out because its super long
     });
-
-
-    // if (metadata && metadata.agent_name) {
-    //   _setSpanAttribute(span, Span_Attributes.GEN_AI_AGENT_NAME, metadata.agent_name);
-    // }
-
-    // _setSpanAttribute(span, 'gen_ai.prompt', String(inputs));
-
-    console.log(`🗣️ Starting chain`);
   }
 
 
@@ -439,7 +399,7 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     const spanHolder = this.spanMapping.get(runId)!;
     const span = spanHolder.span;
     
-    _setSpanAttribute(span, 'gen_ai.completion', String(outputs));
+    // _setSpanAttribute(span, 'gen_ai.completion', JSON.stringify(outputs, null, 2)); // commented out because its super long
     this._endSpan(span, runId);
   }
 
@@ -483,12 +443,9 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     // if (tool.description) {
     //   _setSpanAttribute(span, Span_Attributes.GEN_AI_TOOL_DESCRIPTION, tool.description);
     // }
-    console.log("toolStart runName: ", runName);
 
     _setSpanAttribute(span, Span_Attributes.GEN_AI_TOOL_NAME, name);
     _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, 'execute_tool');
-
-    console.log(`🗣️ Starting tool start`);
   }
 
   async handleToolEnd(
@@ -535,8 +492,6 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
       _setSpanAttribute(span, 'gen_ai.agent.tool.name', tool);
       _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, 'invoke_agent');
     }
-
-    console.log(`🗣️ Starting agent action`);
   }
 
   async handleAgentEnd(
