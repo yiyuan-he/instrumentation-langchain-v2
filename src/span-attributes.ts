@@ -8,6 +8,7 @@ export const Span_Attributes = {
   GEN_AI_REQUEST_MAX_TOKENS: 'gen_ai.request.max_tokens',
   GEN_AI_REQUEST_TEMPERATURE: 'gen_ai.request.temperature',
   GEN_AI_REQUEST_TOP_P: 'gen_ai.request.top_p',
+  GEN_AI_REQUEST_STOP_SEQUENCES: 'gen_ai.request.stop_sequences',
   GEN_AI_SYSTEM: 'gen_ai.system',
   GEN_AI_OPERATION_NAME: 'gen_ai.operation.name',
   GEN_AI_RESPONSE_ID: 'gen_ai.response.id',

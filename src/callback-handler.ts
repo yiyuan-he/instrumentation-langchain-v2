@@ -27,46 +27,45 @@ class SpanHolder {
   }
 }
 
-function _setRequestParams(span: Span, kwargs: Record<string, any>, spanHolder: SpanHolder): void {
-  let model: string | undefined;
+function _setReqParamsFromSerial(span: Span, serialized: Serialized, spanHolder: SpanHolder): void {
 
-  for (const modelTag of ['model_id', 'base_model_id', 'ls_model_name']) {
-    if (kwargs[modelTag] !== undefined) {
-      spanHolder.requestModel = kwargs[modelTag];
-      model = kwargs[modelTag];
-      break;
-    } else if ((kwargs.invocation_params || {})[modelTag] !== undefined) {
-      spanHolder.requestModel = kwargs.invocation_params[modelTag];
-      model = kwargs.invocation_params[modelTag];
-      break;
-    }
+  if (serialized && serialized["kwargs"]) {
+    let model_id = serialized["kwargs"]["model_id"];
+    let temperature = serialized["kwargs"]["temperature"];
+    let max_tokens = serialized["kwargs"]["max_tokens"];
+    let stop_sequences = serialized["kwargs"]["stop_sequences"];
+    let top_p = serialized["kwargs"]["top_p"];
+
+    spanHolder.requestModel = model_id;
+
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_MODEL, model_id);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_RESPONSE_MODEL, model_id);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_TEMPERATURE, temperature);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_MAX_TOKENS, max_tokens);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_TOP_P, top_p);
   }
-
-  if (spanHolder.requestModel === undefined) {
-    model = undefined;
-  }
-
-  _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_MODEL, model);
-  _setSpanAttribute(span, Span_Attributes.GEN_AI_RESPONSE_MODEL, model);
-
-  const params = kwargs.invocation_params 
-    ? (kwargs.invocation_params.params || kwargs.invocation_params) 
-    : kwargs;
-
-  _setSpanAttribute(
-    span,
-    Span_Attributes.GEN_AI_REQUEST_MAX_TOKENS,
-    params.ls_max_tokens || params.ls_max_new_tokens
-  );
-
-  _setSpanAttribute(
-    span,
-    Span_Attributes.GEN_AI_REQUEST_TEMPERATURE,
-    params.ls_temperature
-  );
-
-  _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_TOP_P, params.ls_top_p);
 }
+
+function _setReqParamFromLS(span: Span, metadata: Record<string, any>, spanHolder: SpanHolder): void {
+  
+  if (metadata) {
+    let model_id = metadata.ls_model_name;
+    let temperature = metadata.ls_temperature;
+    let max_tokens = metadata.ls_max_tokens;
+    let provider = metadata.ls_provider;
+    let model_type = metadata.model_type;
+
+    spanHolder.requestModel = model_id;
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_MODEL, model_id);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_RESPONSE_MODEL, model_id);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_TEMPERATURE, temperature);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_MAX_TOKENS, max_tokens);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, provider);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, model_type);
+  }
+}
+
 
 function _setSpanAttribute(span: Span, name: string, value: any): void {
   if (value !== undefined && value !== null && value !== '') {
@@ -151,13 +150,9 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     }
 
     let modelId = 'unknown';
-    
-    if (metadata.invocation_params) {
-      if (metadata.invocation_params.base_model_id) {
-        modelId = metadata.invocation_params.base_model_id;
-      } else if (metadata.invocation_params.model_id) {
-        modelId = metadata.invocation_params.model_id;
-      }
+
+    if (metadata.ls_model_name) {
+      modelId = metadata.ls_model_name;
     }
 
     this.spanMapping.set(runId, new SpanHolder(span, [], modelId));
@@ -169,26 +164,6 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     return span;
   }
 
-  private _getNameFromCallback(
-    serialized: Record<string, any>,
-    tags?: string[],
-    metadata?: Record<string, any>,
-    kwargs: Record<string, any> = {}
-  ): string {
-    if (serialized && serialized.kwargs && serialized.kwargs.name) {
-      return serialized.kwargs.name;
-    }
-    if (kwargs.name) {
-      return kwargs.name;
-    }
-    if (serialized.name) {
-      return serialized.name;
-    }
-    if ('id' in serialized) {
-      return serialized.id[serialized.id.length - 1];
-    }
-    return 'unknown';
-  }
 
   private _handleError(
     error: Error,
@@ -228,22 +203,21 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
       return;
     }
 
-    let name;
-    if (llm.id) {
+    let name = runName;
+    if (name === undefined && llm.id) {
         name = llm.id[llm.id.length - 1];
     }
-  
     const spanName = GenAIOperationValues.CHAT + " " + name;
     const span = this._createSpan(runId, parentRunId,
                                   spanName, 
-                                  SpanKind.INTERNAL, metadata);
-
-    if (extraParams) {
-      _setRequestParams(span, extraParams, this.spanMapping.get(runId)!);
+                                  SpanKind.CLIENT, metadata);
+    if (llm && llm["kwargs"]) {
+      _setReqParamsFromSerial(span, llm, this.spanMapping.get(runId)!);
+      _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, "unknown");
+      _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, "chat");
     }
-    if (metadata) {
-      _setRequestParams(span, metadata, this.spanMapping.get(runId)!);
-      _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, metadata.ls_model_name);
+    if (metadata && Object.keys(metadata).length > 0) {
+      _setReqParamFromLS(span, metadata, this.spanMapping.get(runId)!);
     }
   }
 
@@ -261,30 +235,25 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
       return;
     }
 
-    let modelId;
-    
-    if (extraParams?.invocation_params && 
-        (extraParams.invocation_params as any).model_id) {
-      modelId = (extraParams.invocation_params as any).model_id;
+    let name = runName;
+    if (name === undefined && llm.id) {
+        name = llm.id[llm.id.length - 1];
     }
-    let name = this._getNameFromCallback(llm, undefined, undefined, extraParams || {});
-    if (modelId) {
-      name = modelId;
-    }
-
     const spanName = GenAIOperationValues.CHAT + " " + name;
     const span = this._createSpan(
-      runId,
-      parentRunId,
+      runId, parentRunId,
       spanName,
-      SpanKind.CLIENT,
-      metadata || {}
-    );
+      SpanKind.CLIENT, metadata);
 
-    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, GenAIOperationValues.CHAT);
-    _setRequestParams(span, extraParams || {}, this.spanMapping.get(runId)!);
-    _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, llm.name);
-    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, 'text_completion');
+
+    if (llm && llm["kwargs"]) {
+      _setReqParamsFromSerial(span, llm, this.spanMapping.get(runId)!);
+      _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, "unknown");
+      _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, "chat");
+    }
+    if (metadata && Object.keys(metadata).length > 0) {
+      _setReqParamFromLS(span, metadata, this.spanMapping.get(runId)!);
+    }
   }
 
   async handleLLMEnd(
@@ -297,43 +266,25 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     if (context.active().getValue(_SUPPRESS_INSTRUMENTATION_KEY)) {
       return;
     }
-
-    if (!this.spanMapping.has(runId)) {
-      console.log("LLMEND cannot find span: context issue");
-      return;
-    }
-
     const span = this.spanMapping.get(runId)!.span;
 
-    let modelName;
-    if (output.llmOutput) {
-      modelName = output.llmOutput.model_name || output.llmOutput.model_id;
-      
-      if (modelName) {
-        _setSpanAttribute(span, Span_Attributes.GEN_AI_RESPONSE_MODEL, modelName);
-      }
-      
-      const id = output.llmOutput.id;
-      if (id !== undefined && id !== '') {
-        _setSpanAttribute(span, Span_Attributes.GEN_AI_RESPONSE_ID, id);
-      }
+    if (output.generations) {
+      const generation = output.generations[0][0] as any;
+      const message = generation.message;
 
-      const tokenUsage = output.llmOutput.token_usage || output.llmOutput.usage;
-      
-      if (tokenUsage) {
-        const promptTokens = tokenUsage.prompt_tokens || 
-                            tokenUsage.input_token_count || 
-                            tokenUsage.input_tokens;
-                            
-        const completionTokens = tokenUsage.completion_tokens || 
-                                tokenUsage.generated_token_count || 
-                                tokenUsage.output_tokens;
-
-        _setSpanAttribute(span, Span_Attributes.GEN_AI_USAGE_INPUT_TOKENS, promptTokens);
-        _setSpanAttribute(span, Span_Attributes.GEN_AI_USAGE_OUTPUT_TOKENS, completionTokens);
+      if (message && typeof message === 'object') {
+        if (message.usage_metadata) {
+          const inputTokens = message.usage_metadata.input_tokens;
+          const outputTokens = message.usage_metadata.output_tokens;
+          _setSpanAttribute(span, Span_Attributes.GEN_AI_USAGE_INPUT_TOKENS, inputTokens);
+          _setSpanAttribute(span, Span_Attributes.GEN_AI_USAGE_OUTPUT_TOKENS, outputTokens);
+        }
+        if (message.id) {
+          let response_id = message.id;
+          _setSpanAttribute(span, Span_Attributes.GEN_AI_RESPONSE_ID, response_id);
+        }
       }
     }
-
     this._endSpan(span, runId);
   }
 
@@ -361,21 +312,27 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
       return;
     }
 
-    if (runName === undefined && chain.id) {
-      runName = chain.id[chain.id.length - 1];
+
+
+    let name = runName;
+    if (name === undefined && chain.id) {
+      name = chain.id[chain.id.length - 1];
     } 
 
-    const spanName = `chain ${runName}`;
+    const spanName = `chain ${name}`;
     const span = this._createSpan(runId, parentRunId, spanName, SpanKind.INTERNAL, metadata);
 
     const spanContext = trace.setSpan(context.active(), span);
 
-     return context.with(spanContext, async () => {
-        if (metadata && metadata.agent_name) {
-            _setSpanAttribute(span, Span_Attributes.GEN_AI_AGENT_NAME, metadata.agent_name);
-        }
-        // _setSpanAttribute(span, 'gen_ai.prompt', JSON.stringify(inputs, null, 2)); // commented out because its super long
-    });
+    // _setSpanAttribute(span, 'gen_ai.prompt', JSON.stringify(inputs, null, 2)); // commented out because its super long
+
+    //////// not sure if necessary to do it this way vvvvvvv /////////
+
+    // return context.with(spanContext, async () => {
+    //     if (metadata && metadata.agent_name) {
+    //         _setSpanAttribute(span, Span_Attributes.GEN_AI_AGENT_NAME, metadata.agent_name);
+    //     }
+    // });
   }
 
 
@@ -428,9 +385,11 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
       return;
     }
 
-    const name = this._getNameFromCallback(tool, undefined, undefined, {});
-    
-    const spanName = `execute_tool ${runName}`;
+    let name = runName;
+    if (name === undefined && tool.id) {
+      name = tool.id[tool.id.length - 1];
+    } 
+    const spanName = `execute_tool ${name}`;
     const span = this._createSpan(runId, parentRunId, spanName, SpanKind.INTERNAL, metadata);
 
     _setSpanAttribute(span, 'gen_ai.tool.input', input);
@@ -439,7 +398,7 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
       _setSpanAttribute(span, Span_Attributes.GEN_AI_TOOL_CALL_ID, tool.id);
     }
     
-    // need to find alternative to below
+    // need to find alternative to below because I can't find this info in the parameters
     // if (tool.description) {
     //   _setSpanAttribute(span, Span_Attributes.GEN_AI_TOOL_DESCRIPTION, tool.description);
     // }
@@ -461,9 +420,14 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     if (!this.spanMapping.has(runId)) {
       return;
     }
-
     const span = this.spanMapping.get(runId)!.span;
-    _setSpanAttribute(span, 'gen_ai.tool.output', String(output));
+
+    if (output["kwargs"]) {
+      let content = output["kwargs"]["content"];
+      let call_id = output["kwargs"]["tool_call_id"];
+      _setSpanAttribute(span, 'gen_ai.tool.output', content);
+      _setSpanAttribute(span, Span_Attributes.GEN_AI_TOOL_CALL_ID, call_id);
+    }
     this._endSpan(span, runId);
   }
 
