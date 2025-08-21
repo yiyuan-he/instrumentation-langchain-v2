@@ -1,6 +1,6 @@
 import { Span, SpanKind, Tracer, SpanStatusCode } from '@opentelemetry/api';
 import { context, trace } from '@opentelemetry/api';
-import { GenAIOperationValues, Span_Attributes } from './span-attributes.ts';
+import { GenAIOperationValues, Span_Attributes } from './span-attributes';
 import { Serialized } from '@langchain/core/load/serializable';
 import { ChainValues } from '@langchain/core/utils/types';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
@@ -330,16 +330,10 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     const span = this._createSpan(runId, parentRunId, spanName, SpanKind.INTERNAL, metadata);
 
     const spanContext = trace.setSpan(context.active(), span);
-
+    if (metadata && metadata.agent_name) {
+      _setSpanAttribute(span, Span_Attributes.GEN_AI_AGENT_NAME, metadata.agent_name);
+    }
     // _setSpanAttribute(span, 'gen_ai.prompt', JSON.stringify(inputs, null, 2)); // commented out because its super long
-
-    //////// not sure if necessary to do it this way vvvvvvv /////////
-
-    // return context.with(spanContext, async () => {
-    //     if (metadata && metadata.agent_name) {
-    //         _setSpanAttribute(span, Span_Attributes.GEN_AI_AGENT_NAME, metadata.agent_name);
-    //     }
-    // });
   }
 
 

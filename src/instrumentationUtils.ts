@@ -1,5 +1,4 @@
 import type * as CallbackManagerModuleV02 from "@langchain/core/callbacks/manager";
-import { OITracer } from "@arizeai/openinference-core";
 import { OpenTelemetryCallbackHandler } from "./callback-handler";
 import { Tracer } from "@opentelemetry/api";
 

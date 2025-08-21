@@ -10,7 +10,6 @@ import {
 import { VERSION } from "./version";
 import { diag, Tracer, TracerProvider } from "@opentelemetry/api";
 import { addTracerToHandlers } from "./instrumentationUtils";
-// import { OITracer, TraceConfigOptions } from "@arizeai/openinference-core";
 
 const MODULE_NAME = "@langchain/core/callbacks";
 
@@ -34,10 +33,7 @@ interface CallbackManagerModule {
   isPatched?: boolean;
 }
 
-/**
- * An auto instrumentation class for LangChain that creates {@link https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md|OpenInference} Compliant spans for LangChain
- * @param instrumentationConfig The config for the instrumentation @see {@link InstrumentationConfig}
- */
+
 export class LangChainInstrumentation extends InstrumentationBase {
   private tracerProvider?: TracerProvider;
   private normalTracer: Tracer;
@@ -46,22 +42,7 @@ export class LangChainInstrumentation extends InstrumentationBase {
     instrumentationConfig,
     tracerProvider,
   }: {
-    /**
-     * The config for the instrumentation
-     * @see {@link InstrumentationConfig}
-     */
     instrumentationConfig?: InstrumentationConfig;
-    /**
-     * The OpenInference trace configuration. Can be used to mask or redact sensitive information on spans.
-     * @see {@link TraceConfigOptions}
-     */
-    // traceConfig?: TraceConfigOptions;
-    /**
-     * An optional custom trace provider to be used for tracing. If not provided, a tracer will be created using the global tracer provider.
-     * This is useful if you want to use a non-global tracer provider.
-     *
-     * @see {@link TracerProvider}
-     */
     tracerProvider?: TracerProvider;
   } = {}) {
     super(
@@ -155,12 +136,10 @@ export class LangChainInstrumentation extends InstrumentationBase {
         };
       });
     }
-    _isModulePatched
- = true;
+    _isModulePatched = true;
     try {
       // This can fail if the module is made immutable via the runtime or bundler
-      module.isPatched
-   = true;
+      module.isPatched = true;
     } catch (e) {
       diag.debug(`Failed to set ${MODULE_NAME} patched flag on the module`, e);
     }
@@ -196,12 +175,10 @@ export class LangChainInstrumentation extends InstrumentationBase {
     ) {
       this._unwrap(module.CallbackManager, "_configureSync");
     }
-    _isModulePatched
- = false;
+    _isModulePatched = false;
     try {
       // This can fail if the module is made immutable via the runtime or bundler
-      module.isPatched
-   = false;
+      module.isPatched = false;
     } catch (e) {
       diag.warn(`Failed to unset ${MODULE_NAME} patched flag on the module`, e);
     }
