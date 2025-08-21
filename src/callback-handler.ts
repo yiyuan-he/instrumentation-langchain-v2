@@ -67,6 +67,12 @@ function _setReqParamFromLS(span: Span, metadata: Record<string, any>, spanHolde
 }
 
 
+// function _getNameFromCallback(serialized: Serialized, metadata: Record<string, any>) : string {
+//   if (serialized && serialized["kwargs"]) {
+//     if (serialized["kwargs"])
+//   }
+// }
+
 function _setSpanAttribute(span: Span, name: string, value: any): void {
   if (value !== undefined && value !== null && value !== '') {
     span.setAttribute(name, value);
@@ -211,10 +217,11 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     const span = this._createSpan(runId, parentRunId,
                                   spanName, 
                                   SpanKind.CLIENT, metadata);
+    
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, "chat");
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, "unknown");
     if (llm && llm["kwargs"]) {
       _setReqParamsFromSerial(span, llm, this.spanMapping.get(runId)!);
-      _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, "unknown");
-      _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, "chat");
     }
     if (metadata && Object.keys(metadata).length > 0) {
       _setReqParamFromLS(span, metadata, this.spanMapping.get(runId)!);
@@ -245,11 +252,11 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
       spanName,
       SpanKind.CLIENT, metadata);
 
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, "unknown");
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, "text_completion");
 
     if (llm && llm["kwargs"]) {
       _setReqParamsFromSerial(span, llm, this.spanMapping.get(runId)!);
-      _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, "unknown");
-      _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, "chat");
     }
     if (metadata && Object.keys(metadata).length > 0) {
       _setReqParamFromLS(span, metadata, this.spanMapping.get(runId)!);

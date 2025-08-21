@@ -29,26 +29,21 @@ export function isPatched() {
   return _isModulePatched;
 }
 
-// type CallbackManagerModule = typeof CallbackManagerModuleV02;
 interface CallbackManagerModule {
   CallbackManager: typeof CallbackManager;
-  openInferencePatched?: boolean;
+  isPatched?: boolean;
 }
 
 /**
  * An auto instrumentation class for LangChain that creates {@link https://github.com/Arize-ai/openinference/blob/main/spec/semantic_conventions.md|OpenInference} Compliant spans for LangChain
  * @param instrumentationConfig The config for the instrumentation @see {@link InstrumentationConfig}
  */
-// export class LangChainInstrumentation extends InstrumentationBase<CallbackManagerModule> {
 export class LangChainInstrumentation extends InstrumentationBase {
-  // private oiTracer: OITracer;
   private tracerProvider?: TracerProvider;
-  // private traceConfig?: TraceConfigOptions;
   private normalTracer: Tracer;
 
   constructor({
     instrumentationConfig,
-    // traceConfig,
     tracerProvider,
   }: {
     /**
@@ -115,7 +110,8 @@ export class LangChainInstrumentation extends InstrumentationBase {
 
   private patch(
     module: CallbackManagerModule & {
-      openInferencePatched?: boolean;
+      isPatched
+  ?: boolean;
     },
     moduleVersion?: string,
   ) {
@@ -124,7 +120,8 @@ export class LangChainInstrumentation extends InstrumentationBase {
         moduleVersion != null ? `@${moduleVersion}` : ""
       }`,
     );
-    if (module?.openInferencePatched || _isModulePatched
+    if (module?.isPatched
+   || _isModulePatched
   
     ) {
       return module;
@@ -162,7 +159,8 @@ export class LangChainInstrumentation extends InstrumentationBase {
  = true;
     try {
       // This can fail if the module is made immutable via the runtime or bundler
-      module.openInferencePatched = true;
+      module.isPatched
+   = true;
     } catch (e) {
       diag.debug(`Failed to set ${MODULE_NAME} patched flag on the module`, e);
     }
@@ -172,7 +170,8 @@ export class LangChainInstrumentation extends InstrumentationBase {
 
   private unpatch(
     module?: CallbackManagerModule & {
-      openInferencePatched?: boolean;
+      isPatched
+  ?: boolean;
     },
     moduleVersion?: string,
   ) {
@@ -201,7 +200,8 @@ export class LangChainInstrumentation extends InstrumentationBase {
  = false;
     try {
       // This can fail if the module is made immutable via the runtime or bundler
-      module.openInferencePatched = false;
+      module.isPatched
+   = false;
     } catch (e) {
       diag.warn(`Failed to unset ${MODULE_NAME} patched flag on the module`, e);
     }
