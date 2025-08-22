@@ -6,9 +6,8 @@ import { ChainValues } from '@langchain/core/utils/types';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import { LLMResult } from '@langchain/core/outputs';
 import { AgentAction, AgentFinish } from '@langchain/core/agents';
+import { BaseMessage } from '@langchain/core/messages';
 
-// Define types to match LangChain's TypeScript interfaces
-type BaseMessage = any;
 
 const ASSOCIATION_PROPERTIES_KEY = Symbol('association_properties');
 const _SUPPRESS_INSTRUMENTATION_KEY = Symbol('suppress-instrumentation');
@@ -45,6 +44,10 @@ function _setReqParamsFromSerial(span: Span, serialized: Serialized, spanHolder:
     _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_STOP_SEQUENCES, stop_sequences);
     _setSpanAttribute(span, Span_Attributes.GEN_AI_REQUEST_TOP_P, top_p);
   }
+
+  if (serialized && serialized["id"]) {
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, serialized["id"][serialized["id"].length - 1]);
+  }
 }
 
 function _setReqParamFromLS(span: Span, metadata: Record<string, any>, spanHolder: SpanHolder): void {
@@ -67,11 +70,26 @@ function _setReqParamFromLS(span: Span, metadata: Record<string, any>, spanHolde
 }
 
 
-// function _getNameFromCallback(serialized: Serialized, metadata: Record<string, any>) : string {
-//   if (serialized && serialized["kwargs"]) {
-//     if (serialized["kwargs"])
-//   }
-// }
+function _getNameFromCallback(serialized: Serialized, extraParams?: Record<string, any>, metadata?: Record<string, any>) : any {
+  
+  if (metadata && metadata["ls_model_name"]) {
+    return metadata["ls_model_name"];
+  }
+
+  if (serialized && serialized["kwargs"] && serialized["kwargs"]["model_id"]) {
+    return serialized["kwargs"]["model_id"];
+  }
+
+  if (extraParams && extraParams["invocation_params"] && extraParams["invocation_params"]["model"]) {
+    return extraParams["invocation_params"]["model"];
+  }
+
+  if (serialized && serialized.id) {
+    return serialized.id[serialized.id.length - 1];
+  }
+
+  return "unknown";
+}
 
 function _setSpanAttribute(span: Span, name: string, value: any): void {
   if (value !== undefined && value !== null && value !== '') {
@@ -209,17 +227,15 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
       return;
     }
 
-    let name = runName;
-    if (name === undefined && llm.id) {
-        name = llm.id[llm.id.length - 1];
-    }
+    const name = _getNameFromCallback(llm, extraParams, metadata);
+
     const spanName = GenAIOperationValues.CHAT + " " + name;
     const span = this._createSpan(runId, parentRunId,
                                   spanName, 
                                   SpanKind.CLIENT, metadata);
     
-    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, "chat");
-    _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, "unknown");
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, GenAIOperationValues.CHAT);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, GenAIOperationValues.UNKNOWN);
     if (llm && llm["kwargs"]) {
       _setReqParamsFromSerial(span, llm, this.spanMapping.get(runId)!);
     }
@@ -241,21 +257,17 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     if (context.active().getValue(_SUPPRESS_INSTRUMENTATION_KEY)) {
       return;
     }
-
-    let name = runName;
-    if (name === undefined && llm.id) {
-        name = llm.id[llm.id.length - 1];
-    }
+    const name = _getNameFromCallback(llm, extraParams, metadata);
     const spanName = GenAIOperationValues.CHAT + " " + name;
     const span = this._createSpan(
       runId, parentRunId,
       spanName,
       SpanKind.CLIENT, metadata);
 
-    _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, "unknown");
-    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, "text_completion");
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, GenAIOperationValues.UNKNOWN);
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, GenAIOperationValues.TEXT_COMPLETION);
 
-    if (llm && llm["kwargs"]) {
+    if (llm) {
       _setReqParamsFromSerial(span, llm, this.spanMapping.get(runId)!);
     }
     if (metadata && Object.keys(metadata).length > 0) {
@@ -333,7 +345,7 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     if (metadata && metadata.agent_name) {
       _setSpanAttribute(span, Span_Attributes.GEN_AI_AGENT_NAME, metadata.agent_name);
     }
-    // _setSpanAttribute(span, 'gen_ai.prompt', JSON.stringify(inputs, null, 2)); // commented out because its super long
+    _setSpanAttribute(span, 'gen_ai.prompt', JSON.stringify(inputs, null, 2));
   }
 
 
@@ -357,7 +369,7 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     const spanHolder = this.spanMapping.get(runId)!;
     const span = spanHolder.span;
     
-    // _setSpanAttribute(span, 'gen_ai.completion', JSON.stringify(outputs, null, 2)); // commented out because its super long
+    _setSpanAttribute(span, 'gen_ai.completion', JSON.stringify(outputs, null, 2));
     this._endSpan(span, runId);
   }
 
@@ -398,14 +410,9 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     if (tool.id) {
       _setSpanAttribute(span, Span_Attributes.GEN_AI_TOOL_CALL_ID, tool.id);
     }
-    
-    // need to find alternative to below because I can't find this info in the parameters
-    // if (tool.description) {
-    //   _setSpanAttribute(span, Span_Attributes.GEN_AI_TOOL_DESCRIPTION, tool.description);
-    // }
 
     _setSpanAttribute(span, Span_Attributes.GEN_AI_TOOL_NAME, name);
-    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, 'execute_tool');
+    _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, GenAIOperationValues.EXECUTE_TOOL);
   }
 
   async handleToolEnd(
@@ -455,7 +462,7 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
       
       _setSpanAttribute(span, 'gen_ai.agent.tool.input', toolInput);
       _setSpanAttribute(span, 'gen_ai.agent.tool.name', tool);
-      _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, 'invoke_agent');
+      _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, GenAIOperationValues.INVOKE_AGENT);
     }
   }
 

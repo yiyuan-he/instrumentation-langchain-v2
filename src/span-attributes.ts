@@ -1,5 +1,12 @@
 export enum GenAIOperationValues {
   CHAT = 'chat',
+  CREATE_AGENT = 'create_agent',
+  EMBEDDINGS = 'embeddings',
+  GENERATE_CONTENT = 'generate_content',
+  INVOKE_AGENT = 'invoke_agent',
+  TEXT_COMPLETION = 'text_completion',
+  UNKNOWN = 'unknown',
+  EXECUTE_TOOL = 'execute_tool',
 }
 
 export const Span_Attributes = {
