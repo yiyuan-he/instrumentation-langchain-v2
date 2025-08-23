@@ -148,7 +148,7 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     metadata = metadata || {};
 
     if (metadata !== null) {
-      const currentAssociationProperties = context.active().getValue(ASSOCIATION_PROPERTIES_KEY) || {};
+      const currentAssociationProperties = (context.active().getValue(ASSOCIATION_PROPERTIES_KEY) || {}) as Record<string, any>;
       const sanitizedMetadata = {};
       
       for (const [k, v] of Object.entries(metadata)) {
