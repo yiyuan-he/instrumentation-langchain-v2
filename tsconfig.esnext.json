@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "outDir": "dist/esnext",
+    "rootDir": "src",
+    "tsBuildInfoFile": "dist/esnext/tsconfig.esnext.tsbuildinfo",
+    
+    /* ESNext specific settings */
+    "module": "esnext",
+    "target": "es2017",
+    "moduleResolution": "node",
+    
+    /* Core TypeScript Options */
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true,
+    
+    /* Bedrock integration */
+    "paths": {
+      "@langchain/aws": ["node_modules/@langchain/aws"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"],
+  "references": []
+}

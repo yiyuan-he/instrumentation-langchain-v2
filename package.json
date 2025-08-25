@@ -1,0 +1,60 @@
+{
+  "name": "opentelemetry-instrumentation-langchain-v2",
+  "version": "1.0.0",
+  "description": "Langchain.js instrumentation following OpenTelemetry semantic convention.",
+  "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/haneric00/instrumentation-langchain-v2.git"
+  },
+  "author": "ehrican@amazon.com",
+  "license": "ISC",
+  "type": "commonjs",
+ 
+  "dependencies": {
+    "@langchain/aws": "^0.1.14",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/core": "^1.25.1",
+    "@opentelemetry/instrumentation": "^0.46.0"
+  },
+  "peerDependencies": {
+    "@langchain/core": "^0.2.0 || ^0.3.0"
+  },
+  "devDependencies": {
+    "@langchain/core": "^0.3.13",
+    "@langchain/coreV0.2": "npm:@langchain/core@^0.2.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.50.0",
+    "@opentelemetry/resources": "^1.25.1",
+    "@opentelemetry/sdk-trace-base": "^1.25.1",
+    "@opentelemetry/sdk-trace-node": "^1.25.1",
+    "@opentelemetry/semantic-conventions": "^1.25.1",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.11",
+    "dotenv": "^16.4.5",
+    "jest": "^29.7.0",
+    "langchain": "^0.3.3",
+    "@langchain/aws": "^0.1.14",
+    "@langchain/community": "^0.3.53"
+  },
+
+
+   "scripts": {
+    "prebuild": "rimraf dist && pnpm run version:update",
+    "build": "tsc --build tsconfig.json tsconfig.esm.json tsconfig.esnext.json && tsc-alias -p tsconfig.esm.json",
+    "postbuild": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json && rimraf dist/test",
+    "version:update": "../../scripts/version-update.js",
+    "type:check": "tsc --noEmit",
+    "test": "jest"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/src/index.js"
+    }
+  },
+  "keywords": [],
+  "files": [
+    "dist",
+    "src"
+  ]
+}

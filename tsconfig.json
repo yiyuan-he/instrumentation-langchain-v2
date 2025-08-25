@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    /* Build Configuration */
+    "incremental": true,
+    "composite": true,
+    "outDir": "dist",
+    "rootDir": "src",
+
+    /* Language and Environment */
+    "target": "es2016",
+    "lib": ["esnext"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "baseUrl": ".",
+
+    /* Type Checking */
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Emit Configuration */
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+
+    /* AWS and LangChain-specific Configuration */
+    "paths": {
+      "@langchain/aws": ["node_modules/@langchain/aws"]
+    },
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}

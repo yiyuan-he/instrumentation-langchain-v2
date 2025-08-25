@@ -27,8 +27,7 @@ class SpanHolder {
 }
 
 function _setReqParamsFromSerial(span: Span, serialized: Serialized, spanHolder: SpanHolder): void {
-
-  if (serialized && serialized["kwargs"]) {
+  if (serialized && "kwargs" in serialized) {
     let model_id = serialized["kwargs"]["model_id"];
     let temperature = serialized["kwargs"]["temperature"];
     let max_tokens = serialized["kwargs"]["max_tokens"];
@@ -76,7 +75,7 @@ function _getNameFromCallback(serialized: Serialized, extraParams?: Record<strin
     return metadata["ls_model_name"];
   }
 
-  if (serialized && serialized["kwargs"] && serialized["kwargs"]["model_id"]) {
+  if (serialized && "kwargs" in serialized && "model_id" in serialized["kwargs"]) {
     return serialized["kwargs"]["model_id"];
   }
 
@@ -149,7 +148,7 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
 
     if (metadata !== null) {
       const currentAssociationProperties = (context.active().getValue(ASSOCIATION_PROPERTIES_KEY) || {}) as Record<string, any>;
-      const sanitizedMetadata = {};
+      let sanitizedMetadata: any;
       
       for (const [k, v] of Object.entries(metadata)) {
         if (v !== null && v !== undefined) {
@@ -157,7 +156,6 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
         }
       }
       
-      // Assuming context.attach() is the equivalent method to Python's context_api.attach()
       context.active().setValue(
         ASSOCIATION_PROPERTIES_KEY,
         { ...currentAssociationProperties, ...sanitizedMetadata }
@@ -236,7 +234,7 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
     
     _setSpanAttribute(span, Span_Attributes.GEN_AI_OPERATION_NAME, GenAIOperationValues.CHAT);
     _setSpanAttribute(span, Span_Attributes.GEN_AI_SYSTEM, GenAIOperationValues.UNKNOWN);
-    if (llm && llm["kwargs"]) {
+    if (llm && "kwargs" in llm) {
       _setReqParamsFromSerial(span, llm, this.spanMapping.get(runId)!);
     }
     if (metadata && Object.keys(metadata).length > 0) {
