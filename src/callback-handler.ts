@@ -148,7 +148,7 @@ export class OpenTelemetryCallbackHandler extends BaseCallbackHandler {
 
     if (metadata !== null) {
       const currentAssociationProperties = (context.active().getValue(ASSOCIATION_PROPERTIES_KEY) || {}) as Record<string, any>;
-      let sanitizedMetadata: any;
+      let sanitizedMetadata = {};
       
       for (const [k, v] of Object.entries(metadata)) {
         if (v !== null && v !== undefined) {
