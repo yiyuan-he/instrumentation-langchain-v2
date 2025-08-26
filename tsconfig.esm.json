@@ -28,7 +28,6 @@
     }
   },
   "include": ["src/**/*.ts"],
-  // "exclude": ["node_modules", "dist", "sample-apps", "**/*.test.ts"],
   "references": [],
   
   "tsc-alias": {
