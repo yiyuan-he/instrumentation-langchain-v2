@@ -1,5 +1,5 @@
 {
-  "name": "opentelemetry-instrumentation-langchain-v2",
+  "name": "instrumentation-langchain",
   "version": "1.0.0",
   "description": "Langchain.js instrumentation following OpenTelemetry semantic convention.",
   "main": "dist/src/index.js",
@@ -8,7 +8,8 @@
   "types": "dist/src/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/haneric00/instrumentation-langchain-v2.git"
+    "url": "git+https://github.com/open-telemetry/opentelemetry-js-contrib.git",
+    "directory": "packages/instrumentation-langchain"
   },
   "author": "ehrican@amazon.com",
   "license": "ISC",
