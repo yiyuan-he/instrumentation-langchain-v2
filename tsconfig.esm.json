@@ -4,7 +4,7 @@
     "module": "ES2020",
     "moduleResolution": "node",
     "outDir": "dist/esm",
-    "rootDir": "src",
+    "rootDir": "src", 
     "tsBuildInfoFile": "dist/esm/tsconfig.esm.tsbuildinfo",
     
     /* Core TypeScript Options */
@@ -28,6 +28,7 @@
     }
   },
   "include": ["src/**/*.ts"],
+  // "exclude": ["node_modules", "dist", "sample-apps", "**/*.test.ts"],
   "references": [],
   
   "tsc-alias": {

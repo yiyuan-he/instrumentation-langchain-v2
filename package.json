@@ -1,5 +1,6 @@
 {
-  "name": "instrumentation-langchain",
+  "name": "@opentelemetry/instrumentation-langchain",
+  "private": true,
   "version": "1.0.0",
   "description": "Langchain.js instrumentation following OpenTelemetry semantic convention.",
   "main": "dist/src/index.js",
@@ -40,13 +41,28 @@
     "langchain": "^0.3.3",
     "rimraf": "^5.0.0",
     "tsc-alias": "^1.8.7",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "nyc": "17.1.0",
+    "semver": "7.7.2",
+    "sinon": "15.2.0",
+    "test-all-versions": "6.1.0"
   },
   "scripts": {
     "build": "tsc --build tsconfig.json tsconfig.esm.json tsconfig.esnext.json && tsc-alias -p tsconfig.esm.json",
     "postbuild": "echo '{\"type\": \"module\"}' > ./dist/esm/package.json && rimraf dist/test",
     "type:check": "tsc --noEmit",
-    "test": "jest"
+    "clean": "rimraf build/*",
+    "compile": "tsc -p .",
+    "compile:with-dependencies": "nx run-many -t compile -p @opentelemetry/instrumentation-langchain",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "lint:readme": "node ../../scripts/lint-readme.js",
+    "prepublishOnly": "npm run compile",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "test": "nyc mocha 'test/**/*.ts'",
+    "test-all-versions": "tav",
+    "version:update": "node ../../scripts/version-update.js",
+    "watch": "tsc -w"
   },
   "exports": {
     ".": {
