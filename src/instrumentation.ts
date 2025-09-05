@@ -72,7 +72,7 @@ export class LangChainInstrumentation extends InstrumentationBase {
   }
 
   manuallyInstrument(module: CallbackManagerModule) {
-    diag.debug(`Manually instrumenting \${MODULE_NAME}`);
+    diag.debug(`Manually instrumenting ${MODULE_NAME}`);
     this.patch(module);
   }
 
@@ -154,7 +154,7 @@ export class LangChainInstrumentation extends InstrumentationBase {
       // This can fail if the module is made immutable via the runtime or bundler
       module.isPatched = true;
     } catch (e) {
-      diag.debug(`Failed to set \${MODULE_NAME} patched flag on the module`, e);
+      diag.debug(`Failed to set ${MODULE_NAME} patched flag on the module`, e);
     }
 
     return module;
@@ -193,7 +193,7 @@ export class LangChainInstrumentation extends InstrumentationBase {
       module.isPatched = false;
     } catch (e) {
       diag.warn(
-        `Failed to unset \${MODULE_NAME} patched flag on the module`,
+        `Failed to unset ${MODULE_NAME} patched flag on the module`,
         e
       );
     }
